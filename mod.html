@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件系统访问 API - 重命名文件</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            padding: 40px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            background-color: #fff;
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a90e2;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 18px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: #4a90e2;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4a90e2;
+            color: #fff;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #357abd;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        li {
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f4f4f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            color: #555;
+        }
+
+        li:before {
+            content: '✔️';
+            margin-right: 10px;
+            color: #4caf50;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>批量重命名文件</h1>
+    <p>即使不输入任何字符串，也将所有文件重命名为从0开始的编号：</p>
+
+    <input type="text" id="renameString" placeholder="输入重命名的前缀（可选）">
+    <button id="openFolder">选择要重命名文件的文件夹</button>
+
+    <ul id="renamedFilesList"></ul>
+</div>
+
+<script>
+    document.getElementById('openFolder').addEventListener('click', async () => {
+        const renameString = document.getElementById('renameString').value.trim();
+        const renamedFilesList = document.getElementById('renamedFilesList');
+        renamedFilesList.innerHTML = '';
+
+        try {
+            // 让用户选择文件夹
+            const directoryHandle = await window.showDirectoryPicker();
+            let index = 0;
+
+            // 迭代文件夹中的内容
+            for await (const entry of directoryHandle.values()) {
+                if (entry.kind === 'file') {
+                    const extension = entry.name.split('.').pop(); // 获取文件扩展名
+                    const newFileName = `${renameString || ''}${index}.${extension}`; // 构建新文件名，允许空字符串
+                    index++;
+
+                    const oldFileHandle = await directoryHandle.getFileHandle(entry.name);
+                    const newFileHandle = await directoryHandle.getFileHandle(newFileName, { create: true });
+
+                    // 读取原文件并写入到新文件中
+                    const writable = await newFileHandle.createWritable();
+                    const file = await oldFileHandle.getFile();
+                    await writable.write(await file.arrayBuffer());
+                    await writable.close();
+
+                    // 删除旧文件
+                    await directoryHandle.removeEntry(entry.name);
+
+                    // 更新重命名的文件列表
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `已重命名: ${entry.name} -> ${newFileName}`;
+                    renamedFilesList.appendChild(listItem);
+                }
+            }
+
+            if (renamedFilesList.children.length === 0) {
+                renamedFilesList.innerHTML = '<li>文件夹中没有文件。</li>';
+            }
+
+        } catch (err) {
+            console.error('错误:', err);
+        }
+    });
+</script>
+
+</body>
+</html>
