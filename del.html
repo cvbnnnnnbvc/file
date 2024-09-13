@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件系统访问 API - 删除文件</title>
+    <style>
+       
+       body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            padding: 40px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            background-color: #fff;
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a90e2;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 18px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: #4a90e2;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4a90e2;
+            color: #fff;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #357abd;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        li {
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f4f4f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            color: #555;
+        }
+
+        li:before {
+            content: '✔️';
+            margin-right: 10px;
+            color: #4caf50;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+<h1>匹配字符删除文件</h1>
+<p>在下方输入一个字符串。选择的文件夹中所有包含该字符串的文件将被删除：</p>
+
+<input type="text" id="searchString" placeholder="输入匹配的字符串">
+<button id="openFolder">选择要被控制的文件夹</button>
+
+<ul id="deletedFilesList"></ul>
+
+<script>
+    document.getElementById('openFolder').addEventListener('click', async () => {
+        const searchString = document.getElementById('searchString').value.trim();
+        const deletedFilesList = document.getElementById('deletedFilesList');
+        deletedFilesList.innerHTML = '';
+
+        if (!searchString) {
+            alert('请输入要搜索的字符串。');
+            return;
+        }
+
+        try {
+            // 让用户选择文件夹
+            const directoryHandle = await window.showDirectoryPicker();
+
+            // 迭代文件夹中的内容
+            for await (const entry of directoryHandle.values()) {
+                if (entry.kind === 'file' && entry.name.includes(searchString)) {
+                    const fileHandle = await directoryHandle.getFileHandle(entry.name);
+
+                    // 删除文件
+                    await directoryHandle.removeEntry(entry.name);
+
+                    // 更新删除的文件列表
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `已删除: ${entry.name}`;
+                    deletedFilesList.appendChild(listItem);
+                }
+            }
+
+            if (deletedFilesList.children.length === 0) {
+                deletedFilesList.innerHTML = '<li>未找到匹配的文件。</li>';
+            }
+
+        } catch (err) {
+            console.error('错误:', err);
+        }
+    });
+</script>
+
+</body>
+</html>
